@@ -40,16 +40,16 @@ module "idle_vm" {
   labels             = merge(local.base_labels, { waste_type = "idle-vm" })
 }
 
-module "orphan_disk" {
-  source = "../../modules/persistent-disk"
+# module "orphan_disk" {
+#   source = "../../modules/persistent-disk"
 
-  name            = "${var.name_prefix}orphan-disk-01"
-  zone            = var.zone
-  size_gb         = 10
-  create_snapshot = true
-  snapshot_name   = "${var.name_prefix}orphan-snapshot-01"
-  labels          = merge(local.base_labels, { waste_type = "unattached-disk" })
-}
+#   name            = "${var.name_prefix}orphan-disk-01"
+#   zone            = var.zone
+#   size_gb         = 10
+#   create_snapshot = true
+#   snapshot_name   = "${var.name_prefix}orphan-snapshot-01"
+#   labels          = merge(local.base_labels, { waste_type = "unattached-disk" })
+# }
 
 module "unused_ip" {
   source = "../../modules/static-ip"
