@@ -5,4 +5,10 @@ tfplan
 crash.log
 *.tfvars
 !*.tfvars.example
+finops-agent/.env
+finops-agent/.venv/
+finops-agent/__pycache__/
+finops-agent/**/__pycache__/
+finops-agent/reports/*.json
+finops-agent/reports/*.md
 # Commit .terraform.lock.hcl on purpose: it pins provider versions.

@@ -29,7 +29,6 @@ resource "google_compute_instance" "this" {
   network_interface {
     network    = var.network
     subnetwork = var.subnetwork
-
     dynamic "access_config" {
       for_each = var.enable_external_ip ? [1] : []
       content {}
@@ -38,7 +37,6 @@ resource "google_compute_instance" "this" {
 
   dynamic "service_account" {
     for_each = var.service_account_email == null ? [] : [1]
-
     content {
       email  = var.service_account_email
       scopes = var.service_account_scopes

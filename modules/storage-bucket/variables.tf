@@ -76,14 +76,15 @@ variable "lifecycle_rules" {
     error_message = "Each lifecycle rule action.type must be Delete, SetStorageClass or AbortIncompleteMultipartUpload."
   }
 }
+
 variable "logging_bucket" {
-  description = "Name of the GCS bucket used to store access logs"
+  description = "Name of the GCS bucket used to store access logs."
   type        = string
   default     = null
 }
 
 variable "log_object_prefix" {
-  description = "Prefix used for access log objects"
+  description = "Prefix used for access log objects."
   type        = string
   default     = "access-logs"
 }
