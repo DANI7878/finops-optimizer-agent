@@ -1,4 +1,4 @@
-# GCP FinOps Cloud Optimizer Lab
+# GCP FinOps Cloud Optimizer Agent
 
 A reusable GCP FinOps lab that combines Terraform, GitHub Actions, Cloud
 Run Jobs, deterministic waste detection, Terraform-aware remediation
