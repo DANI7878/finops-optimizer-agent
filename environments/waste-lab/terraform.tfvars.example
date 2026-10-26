@@ -1,7 +1,16 @@
-
-project_id = "finops-lab-511007"
-
-region      = "us-central1"
-zone        = "us-central1-a"
+# Copy to terraform.tfvars and update these values for your environment.
+project_id = "YOUR_GCP_PROJECT_ID"
+region     = "us-central1"
+zone       = "us-central1-a"
 name_prefix = ""
-extra_labels = { owner = "daniel" }
+extra_labels = { owner = "YOUR_NAME" }
+
+# FinOps Agent defaults. Change only if desired.
+finops_agent_service_account_name = "finops-agent"
+finops_agent_region               = "asia-south1"
+finops_agent_job_name             = "finops-optimizer-agent"
+finops_enable_ai                  = true
+finops_gemini_model               = "gemini-3.5-flash-lite"
+finops_vertex_location            = "global"
+finops_idle_cpu_threshold         = 0.05
+finops_idle_lookback_days         = 7

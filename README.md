@@ -54,3 +54,9 @@ module "vm" {
 - Every module accepts `labels`. Cost allocation depends on them.
 - Inputs are validated, so mistakes fail at plan time with a readable message.
 - Commit `.terraform.lock.hcl` to pin provider versions.
+
+## FinOps Agent automation
+
+The waste-lab Terraform now enables the required GCP APIs, creates the `finops-agent` runtime service account, and grants its read-only Compute, Monitoring, Storage and optional Vertex AI roles. The `Deploy FinOps Agent` workflow reads runtime configuration from Terraform outputs and deploys/updates the Cloud Run Job from `finops-agent/`.
+
+For a new environment, copy `environments/waste-lab/terraform.tfvars.example` to `terraform.tfvars` and update the project/region values. GitHub-to-GCP Workload Identity Federation and the remote-state bucket are bootstrap prerequisites because GitHub must authenticate before it can run Terraform; the repository's existing GitHub secrets/variables provide those bootstrap values.

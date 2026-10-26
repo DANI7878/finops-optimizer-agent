@@ -31,3 +31,58 @@ variable "extra_labels" {
   type        = map(string)
   default     = {}
 }
+
+variable "finops_agent_service_account_name" {
+  description = "Service account ID for the FinOps Agent runtime."
+  type        = string
+  default     = "finops-agent"
+}
+
+variable "finops_enable_ai" {
+  description = "Enable Vertex AI recommendations for the FinOps Agent."
+  type        = bool
+  default     = true
+}
+
+variable "finops_agent_region" {
+  description = "Cloud Run region for the FinOps Agent."
+  type        = string
+  default     = "asia-south1"
+}
+
+variable "finops_agent_job_name" {
+  description = "Cloud Run Job name for the FinOps Agent."
+  type        = string
+  default     = "finops-optimizer-agent"
+}
+
+variable "finops_gemini_model" {
+  description = "Gemini model used by the FinOps Agent."
+  type        = string
+  default     = "gemini-3.5-flash-lite"
+}
+
+variable "finops_vertex_location" {
+  description = "Vertex AI location for Gemini."
+  type        = string
+  default     = "global"
+}
+
+variable "finops_idle_cpu_threshold" {
+  description = "Average CPU threshold below which a VM is considered potentially idle."
+  type        = number
+  default     = 0.05
+}
+
+variable "finops_idle_lookback_days" {
+  description = "Cloud Monitoring lookback period for idle VM analysis."
+  type        = number
+  default     = 7
+}
+
+variable "github_deployer_service_account" {
+  description = "GitHub Actions WIF service account email. Leave null to use github-terraform@PROJECT_ID.iam.gserviceaccount.com."
+  type        = string
+  default     = null
+  nullable    = true
+}

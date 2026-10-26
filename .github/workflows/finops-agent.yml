@@ -1,0 +1,190 @@
+name: Deploy FinOps Agent
+
+on:
+  workflow_dispatch:
+    inputs:
+      execute_after_deploy:
+        description: "Run the FinOps Agent immediately after deployment"
+        required: true
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  GCP_REGION: asia-south1
+  CLOUD_RUN_JOB: finops-optimizer-agent
+  AGENT_SOURCE_DIR: finops-agent
+
+  ENABLE_AI: "true"
+  GEMINI_MODEL: "gemini-3.5-flash-lite"
+  VERTEX_LOCATION: "global"
+
+  IDLE_CPU_THRESHOLD: "0.05"
+  IDLE_LOOKBACK_DAYS: "7"
+
+jobs:
+  deploy:
+    name: Build and Deploy FinOps Agent
+    runs-on: ubuntu-latest
+
+    steps:
+      # ----------------------------------------------------------
+      # Checkout
+      # ----------------------------------------------------------
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ----------------------------------------------------------
+      # Validate configuration
+      # ----------------------------------------------------------
+
+      - name: Validate GitHub configuration
+        run: |
+          test -n "${{ vars.GCP_PROJECT_ID }}" || \
+            (echo "ERROR: Missing repository variable GCP_PROJECT_ID" && exit 1)
+
+          test -n "${{ secrets.GCP_WIF_PROVIDER }}" || \
+            (echo "ERROR: Missing secret GCP_WIF_PROVIDER" && exit 1)
+
+          test -n "${{ secrets.GCP_SERVICE_ACCOUNT }}" || \
+            (echo "ERROR: Missing secret GCP_SERVICE_ACCOUNT" && exit 1)
+
+      # ----------------------------------------------------------
+      # Authenticate using existing GitHub -> GCP WIF
+      # ----------------------------------------------------------
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      # ----------------------------------------------------------
+      # Install gcloud
+      # ----------------------------------------------------------
+
+      - name: Setup Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      # ----------------------------------------------------------
+      # Validate agent source
+      # ----------------------------------------------------------
+
+      - name: Validate FinOps Agent files
+        run: |
+          test -f "${AGENT_SOURCE_DIR}/Dockerfile" || \
+            (echo "ERROR: Dockerfile not found" && exit 1)
+
+          test -f "${AGENT_SOURCE_DIR}/main.py" || \
+            (echo "ERROR: main.py not found" && exit 1)
+
+          test -f "${AGENT_SOURCE_DIR}/requirements.txt" || \
+            (echo "ERROR: requirements.txt not found" && exit 1)
+
+          echo "FinOps Agent source validation successful."
+
+      # ----------------------------------------------------------
+      # Determine FinOps Agent service account
+      #
+      # Terraform GitHub SA is used only for deployment.
+      #
+      # The Cloud Run Job itself executes using:
+      #
+      # finops-agent@PROJECT_ID.iam.gserviceaccount.com
+      # ----------------------------------------------------------
+
+      - name: Set Agent Service Account
+        run: |
+          echo "AGENT_SERVICE_ACCOUNT=finops-agent@${{ vars.GCP_PROJECT_ID }}.iam.gserviceaccount.com" \
+            >> "$GITHUB_ENV"
+
+      # ----------------------------------------------------------
+      # Verify runtime service account exists
+      # ----------------------------------------------------------
+
+      - name: Verify FinOps Agent Service Account
+        run: |
+          echo "Checking runtime service account:"
+          echo "${AGENT_SERVICE_ACCOUNT}"
+
+          gcloud iam service-accounts describe \
+            "${AGENT_SERVICE_ACCOUNT}" \
+            --project="${{ vars.GCP_PROJECT_ID }}"
+
+      # ----------------------------------------------------------
+      # Deploy/update Cloud Run Job
+      #
+      # --source causes Cloud Build to build a new container
+      # from finops-agent/.
+      #
+      # If the job does not exist -> create it.
+      # If it already exists -> update it.
+      # ----------------------------------------------------------
+
+      - name: Deploy FinOps Agent Cloud Run Job
+        run: |
+          gcloud run jobs deploy "${CLOUD_RUN_JOB}" \
+            --source="${AGENT_SOURCE_DIR}" \
+            --project="${{ vars.GCP_PROJECT_ID }}" \
+            --region="${GCP_REGION}" \
+            --service-account="${AGENT_SERVICE_ACCOUNT}" \
+            --set-env-vars="GCP_PROJECT_ID=${{ vars.GCP_PROJECT_ID }},ENABLE_AI=${ENABLE_AI},GEMINI_MODEL=${GEMINI_MODEL},VERTEX_LOCATION=${VERTEX_LOCATION},IDLE_CPU_THRESHOLD=${IDLE_CPU_THRESHOLD},IDLE_LOOKBACK_DAYS=${IDLE_LOOKBACK_DAYS}" \
+            --memory=512Mi \
+            --cpu=1 \
+            --task-timeout=600s \
+            --max-retries=0 \
+            --quiet
+
+      # ----------------------------------------------------------
+      # Verify deployment
+      # ----------------------------------------------------------
+
+      - name: Verify Cloud Run Job
+        run: |
+          echo "Cloud Run Job configuration:"
+          echo ""
+
+          gcloud run jobs describe "${CLOUD_RUN_JOB}" \
+            --project="${{ vars.GCP_PROJECT_ID }}" \
+            --region="${GCP_REGION}"
+
+      # ----------------------------------------------------------
+      # Optionally execute immediately
+      # ----------------------------------------------------------
+
+      - name: Execute FinOps Agent
+        if: ${{ inputs.execute_after_deploy }}
+        run: |
+          gcloud run jobs execute "${CLOUD_RUN_JOB}" \
+            --project="${{ vars.GCP_PROJECT_ID }}" \
+            --region="${GCP_REGION}" \
+            --wait
+
+      # ----------------------------------------------------------
+      # Summary
+      # ----------------------------------------------------------
+
+      - name: Deployment Summary
+        if: ${{ success() }}
+        run: |
+          echo "### FinOps Agent Deployment Successful" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+
+          echo "- Project: \`${{ vars.GCP_PROJECT_ID }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Region: \`${GCP_REGION}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Cloud Run Job: \`${CLOUD_RUN_JOB}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Runtime Service Account: \`${AGENT_SERVICE_ACCOUNT}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Gemini Model: \`${GEMINI_MODEL}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- AI Enabled: \`${ENABLE_AI}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Source Commit: \`${GITHUB_SHA}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+
+          if [ "${{ inputs.execute_after_deploy }}" = "true" ]; then
+            echo "FinOps Agent was executed after deployment." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "FinOps Agent was deployed but not executed." >> "$GITHUB_STEP_SUMMARY"
+          fi
